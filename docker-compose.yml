@@ -1,0 +1,7 @@
+services:
+  spinwheel:
+    build: .
+    container_name: spinwheel
+    ports:
+      - "8080:80"
+    restart: unless-stopped

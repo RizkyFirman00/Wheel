@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Spin Gacha Wheel – Random Name Picker & Lucky Draw</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- GOOGLE FONT POPPINS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/svg+xml" href="wheel.svg">
+</head>
+
+<body>
+    <div class="app">
+        <header>
+            <div>
+                <h1><span>🎰</span> Spin Gacha Wheel</h1>
+                <small>Enter names, then spin. You can remove selected names automatically.</small>
+            </div>
+        </header>
+
+        <div class="main">
+
+            <!-- LEFT: Wheel -->
+            <section class="panel">
+                <h2>
+                    Wheel
+                    <span class="badge" id="countBadge">0 entries</span>
+                </h2>
+
+                <div class="wheel-shell">
+                    <div class="wheel-wrapper" id="wheelWrapper">
+                        <canvas id="wheel"></canvas>
+                        <div class="pointer"></div>
+                    </div>
+
+                    <button class="spin-button" id="spinBtn" disabled>
+                        <span class="emoji">🌀</span>
+                        <span>Spin!</span>
+                    </button>
+
+                    <div class="options-bar">
+                        <label>
+                            <input type="checkbox" id="removeOnPick" checked>
+                            Remove name if selected
+                        </label>
+                    </div>
+
+                    <div class="result-box" id="resultBox">
+                        Add some names, then press <strong>Spin</strong>.
+                    </div>
+
+                    <div class="quick-guide" id="quickGuide">
+                        <h3>Quick Guide</h3>
+                        <ul>
+                            <li>➕ Add names using the form on the right</li>
+                            <li>📥 Use <strong>Import Text</strong> to paste many names at once</li>
+                            <li>🎯 Press <strong>Spin</strong> to pick a random winner</li>
+                            <li>🗑 Enable “Remove name if selected” to avoid repeats</li>
+                        </ul>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- RIGHT: Name list -->
+            <section class="panel">
+                <h2>
+                    Name List
+                    <span class="badge">Add / remove</span>
+                </h2>
+
+                <form class="input-row" id="nameForm" autocomplete="off">
+                    <input type="text" id="nameInput" placeholder="Example: Alex" maxlength="40">
+                    <button type="submit" class="btn-small green">Add</button>
+                </form>
+
+                <div class="input-row" style="margin-bottom:10px;">
+                    <button type="button" class="btn-small" id="seedBtn">Fill sample names</button>
+                    <button type="button" class="btn-small" id="importBtn">Import text</button>
+                    <button type="button" class="btn-small red" id="clearBtn">Clear all</button>
+                </div>
+
+                <ul class="names-list" id="namesList">
+                    <li class="empty-hint">No names yet. Add them above.</li>
+                </ul>
+
+                <div class="footer-info">
+                    <span>Tip: press Enter after typing a name to add it.</span>
+                    <span id="lastWinnerInfo"></span>
+                </div>
+            </section>
+        </div>
+    </div>
+    
+    <!-- Modal -->
+    <div id="modalOverlay" class="modal-overlay hidden">
+        <div class="modal-box">
+            <div id="modalMessage" class="modal-message"></div>
+            <div id="modalButtons" class="modal-buttons"></div>
+        </div>
+    </div>
+
+    <div id="importModal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <h3 style="margin-bottom:10px;">Import Names</h3>
+            <textarea id="importTextarea" placeholder="Paste names here (one per line)" class="import-textarea"></textarea>
+            <div class="modal-buttons">
+                <button id="importConfirm" class="btn-small green">Import</button>
+                <button id="importCancel" class="btn-small red">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
