@@ -1,42 +1,85 @@
 <?php
-header('Content-Type: application/json; charset=utf-8');
+header("Content-Type: application/json; charset=utf-8");
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Pragma: no-cache");
 
-$keyHex = 'd5f89c0aa788473fbf917d9749d04a2616c2771d3f4aaf9de3e1b669acf057cd';
-$key    = hex2bin($keyHex);
+$data = json_decode(file_get_contents("php://input"), true);
+$names = $data["names"] ?? null;
 
-$iv = random_bytes(16);
-
-$blocklist = [
-    "Annisa Umulfath", "annisa umulfath", "ANNISA UMULFATH",
-    "iman", "Iman", "Firman", "firman", "virza", "VIRZA", "Virza", "FIRMAN", "IMAN",
-    "Rizki", "rizki", "Nisa", "Pirja", "pirja", "PIRJA", "NISA", "RIZKI",
-    "Vierza Vandifa", "vierza vandifa", "VIERZA VANDIFA",
-    "vierza", "vandifa", "Vierza", "Vandifa", "Andika", "andika", 
-    "IMAN", "FIRMAN", "RIZKI", "NISA", "PIRJA", "ANDIKA",
-    "RIZKI ANDIKA SETIADI", "rizki andika setiadi", "Rizki Andika Setiadi",
-    "Setiadi", "setiadi", "SETIADI", "persa", "Persa", "PERSA",
-    "firmansyah", "Firmansyah", "FIRMANSYAH", "umulfath", "Umulfath", "UMULFATH",
-    "Muhammad Rizky Firmansyah", "muhammad rizky firmansyah", "MUHAMMAD RIZKY FIRMANSYAH",
-    "91124080", "91124079", "91124082", "91124077"
-];
-
-$plaintext = json_encode($blocklist, JSON_UNESCAPED_UNICODE);
-
-$cipherRaw = openssl_encrypt(
-    $plaintext,
-    'AES-256-CBC',
-    $key,
-    OPENSSL_RAW_DATA,
-    $iv
-);
-
-if ($cipherRaw === false) {
-    http_response_code(500);
-    echo json_encode(['error' => 'encrypt_failed']);
+if (!is_array($names)) {
+    echo json_encode(["ok" => false, "message" => "Invalid payload"]);
     exit;
 }
 
+function norm($s)
+{
+    $s = mb_strtolower(trim((string) $s), "UTF-8");
+    // normalisasi whitespace (termasuk NBSP, tab, dll) -> 1 spasi
+    $s = preg_replace('/\s+/u', ' ', $s);
+    // buang karakter selain huruf/angka/spasi
+    $s = preg_replace('/[^\p{L}\p{N} ]+/u', '', $s);
+    // trim lagi
+    $s = trim($s);
+    return $s ?? "";
+}
+
+$blocked_raw = [
+    "annisa umulfath",
+    "iman",
+    "firman",
+    "virza",
+    "rizki",
+    "nisa",
+    "pirja",
+    "andika",
+    "vierza vandifa",
+    "vierza",
+    "vandifa",
+    "rizki andika setiadi",
+    "setiadi",
+    "persa",
+    "firmansyah",
+    "umulfath",
+    "muhammad rizky firmansyah",
+    "91124080",
+    "91124079",
+    "91124082",
+    "91124077"
+];
+
+$blocked = array_map("norm", $blocked_raw);
+
+$valid = [];
+
+foreach ($names as $i => $n) {
+    $cand = norm($n);
+    if ($cand === "")
+        continue;
+
+    $ok = true;
+    foreach ($blocked as $b) {
+        if ($b === "")
+            continue;
+
+        // contains match
+        if (mb_strpos($cand, $b, 0, "UTF-8") !== false) {
+            $ok = false;
+            break;
+        }
+    }
+
+    if ($ok)
+        $valid[] = $i;
+}
+
+if (count($valid) > 0) {
+    $pickIndex = $valid[random_int(0, count($valid) - 1)];
+} else {
+    $pickIndex = random_int(0, count($names) - 1);
+}
+
 echo json_encode([
-    'cipher' => base64_encode($cipherRaw),
-    'iv'     => base64_encode($iv)
-], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    "ok" => true,
+    "index" => $pickIndex
+], JSON_UNESCAPED_UNICODE);
+exit;

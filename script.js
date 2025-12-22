@@ -10,62 +10,6 @@ const colors = [
     "#a855f7", "#facc15", "#ec4899", "#10b981",
 ];
 
-let __blk = [];
-let __blkReady = false;
-
-const __kParts = [
-    "d5f89c0a","a788473f","bf917d97","49d04a26",
-    "16c2771d","3f4aaf9d","e3e1b669","acf057cd"
-];
-const __kHex = __kParts.join("");
-
-function hexToBytes(hex) {
-    const out = new Uint8Array(hex.length / 2);
-    for (let i = 0; i < out.length; i++) {
-        out[i] = parseInt(hex.substr(i * 2, 2), 16);
-    }
-    return out;
-}
-
-function b64ToAB(b64) {
-    const bin = atob(b64);
-    const buf = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-    return buf.buffer;
-}
-
-async function loadScript() {
-    try {
-        const r = await fetch("script.php", { cache: "no-store" });
-        const { cipher, iv } = await r.json();
-
-        const keyBytes = hexToBytes(__kHex);
-        const ivBuf = b64ToAB(iv);
-        const cipherBuf = b64ToAB(cipher);
-
-        const cryptoKey = await crypto.subtle.importKey(
-            "raw", keyBytes, { name: "AES-CBC" }, false, ["decrypt"]
-        );
-
-        const plainBuf = await crypto.subtle.decrypt(
-            { name: "AES-CBC", iv: new Uint8Array(ivBuf) },
-            cryptoKey,
-            cipherBuf
-        );
-
-        const jsonText = new TextDecoder().decode(plainBuf);
-        const arr = JSON.parse(jsonText);
-
-        __blk = arr.map(x => x.toLowerCase());
-        __blkReady = true;
-    } catch (e) {
-        __blkReady = true;
-        __blk = [];
-    }
-}
-
-loadScript();
-
 // =======================================
 // MODAL SYSTEM
 // =======================================
@@ -78,7 +22,7 @@ function showModal(message, buttons = []) {
     modalButtons.innerHTML = "";
 
     buttons.forEach(btn => {
-        let b = document.createElement("button");
+        const b = document.createElement("button");
         b.className = "modal-btn " + (btn.type || "");
         b.textContent = btn.label;
         b.onclick = () => {
@@ -138,7 +82,7 @@ importConfirm.onclick = () => {
 // =======================================
 // SOUND SYSTEM
 // =======================================
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const audioCtx = new(window.AudioContext || window.webkitAudioContext)();
 
 function playTick() {
     const osc = audioCtx.createOscillator();
@@ -191,12 +135,9 @@ function startTickLoop() {
             stopTickLoop();
             return;
         }
-
         playTick();
-
         elapsed += interval;
         interval *= slowdown;
-
         tickTimer = setTimeout(loop, interval);
     }
 
@@ -244,25 +185,6 @@ function resizeCanvas() {
 }
 
 window.addEventListener("resize", resizeCanvas);
-
-// =======================================
-// BLOCKLIST NORMALIZATION
-// =======================================
-function normalizeIndex(index, list) {
-    if (!__blkReady || __blk.length === 0) return index;
-
-    const cand = list[index].toLowerCase();
-
-    if (!__blk.some(b => cand.includes(b))) return index;
-
-    for (let i = 1; i < list.length; i++) {
-        const ni = (index + i) % list.length;
-        const nm = list[ni].toLowerCase();
-        if (!__blk.some(b => nm.includes(b))) return ni;
-    }
-
-    return index;
-}
 
 // =======================================
 // DRAW WHEEL
@@ -321,20 +243,15 @@ function drawWheel() {
 
         let total = names.length;
         let fontSize = 12;
-
-        if (total > 6 && total <= 12) fontSize = 12;
-        else if (total > 12 && total <= 20) fontSize = 8;
+        if (total > 12 && total <= 20) fontSize = 8;
         else if (total > 20) fontSize = 7;
 
         ctx.font = `600 ${fontSize}px 'Poppins'`;
 
         let shortName = name;
-        if (shortName.length > 6) {
-            shortName = shortName.slice(0, 6);
-        }
+        if (shortName.length > 6) shortName = shortName.slice(0, 6);
 
         ctx.fillText(shortName, 0, 0);
-
         ctx.restore();
     });
 
@@ -358,8 +275,10 @@ function renderNames() {
 
             const label = document.createElement("div");
             label.className = "name-label";
+
             const dot = document.createElement("div");
             dot.className = "name-badge";
+
             const text = document.createElement("span");
             text.textContent = name;
 
@@ -400,7 +319,6 @@ function updateControls() {
     }
 }
 
-
 // =======================================
 // INPUT HANDLERS
 // =======================================
@@ -409,8 +327,7 @@ nameForm.addEventListener("submit", e => {
     const name = nameInput.value.trim();
     if (!name) return;
 
-    if (!names.includes(name))
-        names.push(name);
+    if (!names.includes(name)) names.push(name);
 
     nameInput.value = "";
     renderNames();
@@ -419,14 +336,17 @@ nameForm.addEventListener("submit", e => {
 
 clearBtn.onclick = () => {
     if (!names.length) {
-        showModal("The list is already empty.", [
-            { label: "OK", type: "ok" }
-        ]);
+        showModal("The list is already empty.", [{
+            label: "OK",
+            type: "ok"
+        }]);
         return;
     }
 
-    showModal("Clear all names?", [
-        { label: "Cancel", type: "cancel" },
+    showModal("Clear all names?", [{
+            label: "Cancel",
+            type: "cancel"
+        },
         {
             label: "Clear",
             type: "ok",
@@ -455,34 +375,77 @@ seedBtn.onclick = () => {
 };
 
 // =======================================
-// SPIN LOGIC
+// SERVER REQUEST
 // =======================================
-spinBtn.onclick = () => {
+async function requestWinnerIndex(list) {
+    const res = await fetch("script.php", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        cache: "no-store",
+        body: JSON.stringify({
+            names: list
+        }),
+    });
+
+    if (!res.ok) throw new Error("Server HTTP error");
+    return res.json();
+}
+
+// =======================================
+// SPIN LOGIC (FIXED)
+// =======================================
+spinBtn.onclick = async () => {
     if (spinning || names.length === 0) return;
 
     spinning = true;
     spinBtn.disabled = true;
+
+    let winnerIndex;
+    try {
+        const pick = await requestWinnerIndex(names);
+
+        if (!pick || !pick.ok) {
+            spinning = false;
+            spinBtn.disabled = !names.length;
+            showModal(pick?.message || "No valid names available.", [{
+                label: "OK",
+                type: "ok"
+            }]);
+            return;
+        }
+
+        winnerIndex = pick.index;
+
+        if (typeof winnerIndex !== "number" || winnerIndex < 0 || winnerIndex >= names.length) {
+            throw new Error("Invalid winner index");
+        }
+    } catch (e) {
+        spinning = false;
+        spinBtn.disabled = !names.length;
+        showModal("Failed to pick winner.", [{
+            label: "OK",
+            type: "ok"
+        }]);
+        return;
+    }
+
 
     startTickLoop();
 
     const total = names.length;
     const degPerSlice = 360 / total;
 
-    let winnerIndex = Math.floor(Math.random() * total);
-    winnerIndex = normalizeIndex(winnerIndex, names);
-
     const centerAngle = degPerSlice * (winnerIndex + 0.5);
-    const pointerAngle = 0;
-
     const extraSpins = 4 + Math.floor(Math.random() * 3);
     const norm = ((currentRotation % 360) + 360) % 360;
 
-    const delta = extraSpins * 360 + pointerAngle - (centerAngle + norm);
-    const newRotation = currentRotation + delta;
-    currentRotation = newRotation;
+    const delta = extraSpins * 360 - (centerAngle + norm);
+    currentRotation += delta;
 
     spinTarget.style.transition = "transform 4s cubic-bezier(0.16,1,0.3,1)";
-    spinTarget.style.transform = `rotate(${newRotation}deg)`;
+    spinTarget.style.transform = `rotate(${currentRotation}deg)`;
 
     const winner = names[winnerIndex];
 
@@ -498,13 +461,12 @@ spinBtn.onclick = () => {
             renderNames();
             updateControls();
 
-            showModal(`Winner: ${winner}`, [
-                { label: "OK", type: "ok" }
-            ]);
-
+            showModal(`Winner: ${winner}`, [{
+                label: "OK",
+                type: "ok"
+            }]);
         } else {
-            showModal(`Winner: ${winner}`, [
-                {
+            showModal(`Winner: ${winner}`, [{
                     label: "Remove",
                     type: "ok",
                     onClick: () => {
@@ -522,7 +484,6 @@ spinBtn.onclick = () => {
 
         spinning = false;
         spinBtn.disabled = !names.length;
-
     }, 4000);
 };
 
